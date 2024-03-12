@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.providers.http.sensors.http import HttpSensor
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.operators.python import PythonOperator
+from airflow.models import Variable
 
 from datetime import datetime, timedelta
 import json
@@ -17,6 +18,8 @@ default_args = {
     'retries': 2,
     'retry_delay':timedelta(minutes=2)
 }
+openweather_api_key = Variable.get('ow_key')
+
 
 def kelvin_to_fahrenheit(temp_in_kelvin):
     temp_in_fahrenheit = (temp_in_kelvin*1.8) - 459.67
@@ -55,6 +58,7 @@ def transform_load_data(task_instance):
 
     transformed_data_list = [transformed_data]
     df_data = pd.DataFrame(transformed_data_list)
+    aws_credentials = Variable.get("aws_session_creds", deserialize_json=True)
 
     now = datetime.now()
     dt_string = now.strftime('%d%m%Y%H%M%S')
@@ -72,7 +76,7 @@ with DAG('weather_dag',
     is_weather_api_ready = HttpSensor(
         task_id = 'is_weather_api_ready',
         http_conn_id = 'weathermap_api',
-        endpoint = '/data/2.5/weather?q=Portland&appid=8e3cbb1f2bc6309fdf07b24e597bf2af'
+        endpoint = '/data/2.5/weather?q=Portland&appid='+openweather_api_key
     )
 
     extract_weather_data = SimpleHttpOperator(
@@ -81,7 +85,7 @@ with DAG('weather_dag',
         method = 'GET',
         response_filter = lambda resp: json.loads(resp.text),
         log_response = True,
-        endpoint = '/data/2.5/weather?q=Portland&appid=8e3cbb1f2bc6309fdf07b24e597bf2af'
+        endpoint = '/data/2.5/weather?q=Portland&appid='+openweather_api_key
     )
 
     transform_extract_load_data = PythonOperator(
