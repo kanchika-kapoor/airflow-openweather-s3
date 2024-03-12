@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.providers.http.sensors.http import HttpSensor
+from airflow.providers.http.operators.http import SimpleHttpOperator
 
 from datetime import datetime, timedelta
 import json
@@ -24,5 +25,14 @@ with DAG('weather_dag',
     is_weather_api_ready = HttpSensor(
         task_id = 'is_weather_api_ready',
         http_conn_id = 'weathermap_api',
+        endpoint = '/data/2.5/weather?q=Portland&appid=8e3cbb1f2bc6309fdf07b24e597bf2af'
+    )
+
+    extract_weather_data = SimpleHttpOperator(
+        task_id = 'extract_weather_data',
+        http_conn_id = 'weathermap_api',
+        method = 'GET',
+        response_filter = lambda resp: json.loads(resp.text),
+        log_response = True,
         endpoint = '/data/2.5/weather?q=Portland&appid=8e3cbb1f2bc6309fdf07b24e597bf2af'
     )
