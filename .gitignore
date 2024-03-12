@@ -1,2 +1,4 @@
 *.pid
 *.txt
+*.log
+logs/
